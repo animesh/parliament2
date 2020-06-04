@@ -11,7 +11,12 @@ RUN apt-get upgrade -y -q
 
 # Install necessary tools
 RUN apt-get install -y \
-    python-pip
+    curl
 
-# Install BreakSeq2
-RUN pip install https://github.com/bioinform/breakseq2/archive/2.2.tar.gz
+# Install conda
+RUN curl -LO http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh && bash Miniconda-latest-Linux-x86_64.sh -p /miniconda -b && rm Miniconda-latest-Linux-x86_64.sh
+ENV PATH=/miniconda/bin:${PATH}
+RUN conda update -y conda
+
+RUN conda config --add channels bioconda
+RUN conda install -c bioconda breakseq2

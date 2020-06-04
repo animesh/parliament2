@@ -14,7 +14,7 @@ RUN apt-get upgrade -y -q
 RUN apt-get install -y \
     curl
 
-# Install conda & samtools
+# Install conda
 RUN curl -LO http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh && bash Miniconda-latest-Linux-x86_64.sh -p /miniconda -b && rm Miniconda-latest-Linux-x86_64.sh
 ENV PATH=/miniconda/bin:${PATH}
 RUN conda update -y conda
