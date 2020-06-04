@@ -1,5 +1,0 @@
-[ libDCache.so ]
-# List of selected classes
-class TDCacheFile
-class TDCacheSystem
-header TDCacheFile.h

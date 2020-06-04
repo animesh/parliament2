@@ -1,5 +1,0 @@
-[ libGFAL.so ]
-# List of selected classes
-class TGFALFile
-class TGFALSystem
-header TGFALFile.h

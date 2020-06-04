@@ -1,4 +1,0 @@
-Library.TLDAPServer:                        libRLDAP.so
-Library.TLDAPResult:                        libRLDAP.so
-Library.TLDAPEntry:                         libRLDAP.so
-Library.TLDAPAttribute:                     libRLDAP.so
