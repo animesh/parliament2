@@ -1,6 +1,5 @@
-# Set the base image to Ubuntu 14.04
+# Set the base image to Ubuntu 20.04
 FROM ubuntu:20.04
-ENV DEBIAN_FRONTEND=noninteractive
 
 # File Author / Maintainer
 MAINTAINER Samantha Zarate
