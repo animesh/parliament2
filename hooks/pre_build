@@ -1,5 +1,0 @@
-#!/bin/bash
-
-echo "Compressing the resources directory"
-
-tar -czf resources.tar.gz resources/
