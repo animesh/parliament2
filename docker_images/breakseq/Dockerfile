@@ -6,7 +6,6 @@ MAINTAINER Samantha Zarate
 
 # System packages
 RUN apt-get update -q
-RUN apt-get install -y apt-utils -q
 RUN apt-get upgrade -y -q
 
 # Install necessary tools
