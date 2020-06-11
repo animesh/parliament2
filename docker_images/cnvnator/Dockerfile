@@ -83,3 +83,5 @@ RUN apt-get install -y \
     libcurl4-openssl-dev \
     libreadline-dev 
 RUN make
+
+ENV PATH=$PATH:/CNVnator_v0.4.1/src
