@@ -22,6 +22,7 @@ WORKDIR root/
 RUN git checkout -b v6-20-04 v6-20-04
 
 # Step 1A: download everything necessary to compile root
+RUN apt-get update -q
 RUN apt-get install -y \
     # binutils \
     build-essential \
