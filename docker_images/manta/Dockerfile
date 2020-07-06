@@ -7,23 +7,16 @@ MAINTAINER Samantha Zarate
 # System packages
 RUN apt-get update -q
 RUN apt-get upgrade -y -q
-RUN apt-get update -q
 
 # Install necessary tools
-RUN apt-get install -y -q \
-    bzip2 \
-    gcc \
-    g++ \
-    make \
-    python \
-    wget \
-    zlib1g-dev
+RUN apt-get install -y \
+    curl
 
-# Install Manta
-ENV MANTA_VERSION=1.6.0
-RUN wget https://github.com/Illumina/manta/releases/download/v${MANTA_VERSION}/manta-${MANTA_VERSION}.release_src.tar.bz2
-RUN tar -xjf manta-${MANTA_VERSION}.release_src.tar.bz2
-RUN mkdir build
-WORKDIR build
-RUN ../manta-${MANTA_VERSION}.release_src/configure --jobs=4
-RUN make -j4 install
+# Install conda
+RUN curl -LO http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh && bash Miniconda-latest-Linux-x86_64.sh -p /miniconda -b && rm Miniconda-latest-Linux-x86_64.sh
+ENV PATH=/miniconda/bin:${PATH}
+RUN conda update -y conda
+
+# Install manta
+RUN conda config --add channels bioconda
+RUN conda install -c bioconda manta

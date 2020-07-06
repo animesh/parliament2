@@ -18,6 +18,11 @@ ENV PATH=/miniconda/bin:${PATH}
 RUN conda update -y conda
 
 RUN conda config --add channels bioconda
-RUN conda install -c bioconda breakseq2
+RUN conda install -c bioconda breakseq2 samtools
 
 ENV PATH=$PATH:/miniconda/bin
+
+# include breakpoint files required for BreakSeq
+COPY breakseq2_bplib_20150129.hs37d5 /breakseq2_bplib_20150129.hs37d5
+COPY breakseq2_bplib_20150129.hg19 /breakseq2_bplib_20150129.hg19
+COPY bplib.hg38.gff /
