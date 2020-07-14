@@ -1,12 +1,31 @@
 version 1.0
 
-workflow Parliament2{
+workflow Parliament2 {
     input {
         File inputBam
         File inputBai
         File refFasta 
         File refIndex
+        Boolean filterContigs
         Boolean runBreakseq
+        Boolean runManta
+    }
+
+    if (runManta) {
+        call P2Prep {
+            input:
+                inputBam = inputBam,
+                filterContigs = filterContigs
+        }
+
+        call Manta {
+            input:
+                inputBam = inputBam,
+                inputBai = inputBai,
+                refFasta = refFasta,
+                refIndex = refIndex,
+                contigs = P2Prep.contigs
+        }
     }
 
     if (runBreakseq) {
@@ -18,7 +37,28 @@ workflow Parliament2{
                 refIndex = refIndex
         }
     }
+}
 
+task P2Prep {
+    input {
+        File inputBam
+        Boolean filterContigs
+    }
+
+    command <<<
+        samtools view -H "~{inputBam}" | python /get_contigs.py "~{filterContigs}" > contigs
+    >>>
+
+    Int diskGb = ceil(2.0 * size(inputBam, "G"))
+    
+    runtime {
+        docker : "szarate/p2_prep:v0.0.1"
+        disks : "local-disk ${diskGb} SSD"
+    }
+
+    output {
+        File contigs = "contigs"
+    }
 }
 
 task Breakseq {
@@ -62,10 +102,56 @@ task Breakseq {
     }
 
     output {
-        File breakseqGFF = "${bamBase}.gff"
-        File breakseq_genotypedGFF = "${bamBase}_genotyped.gff"
-        File breakseqVCF = "${bamBase}.vcf.gz"
-        File breakseqVCFindex = "${bamBase}.vcf.gz.tbi"
+        File breakseqGFF = "${bamBase}.breakseq.gff"
+        File breakseq_genotypedGFF = "${bamBase}_genotyped.breakseq.gff"
+        File breakseqVCF = "${bamBase}.breakseq.vcf.gz"
+        File breakseqVCFindex = "${bamBase}.breakseq.vcf.gz.tbi"
         File breakseqBAM = "${bamBase}.breakseq.bam"
+    }
+}
+
+task Manta {
+    input {
+        File inputBam
+        File inputBai
+        File refFasta
+        File refIndex
+        File contigs
+    }
+
+    String bamBase='~{basename(inputBam,".bam")}'
+
+    command <<<
+        mkdir -p "manta"
+        gunzip "~{refFasta}"
+
+        refName="~{refFasta}"
+        refName="${refName%.gz}"
+        region_string=""
+
+        while read line; do
+            region_string="$region_string --region=$line"
+        done < "~{contigs}"
+
+        python /usr/local/bin/configManta.py --referenceFasta "${refName}" --normalBam "~{inputBam}" --runDir manta $region_string
+
+        python manta/runWorkflow.py -m local -j "$(nproc)"
+
+        tar -czf stats.tar.gz -C manta/results/stats/ .
+        tar -czf variants.tar.gz -C manta/results/variants/ .
+
+        mv manta/results/variants/diploidSV.vcf.gz "~{bamBase}.manta.vcf.gz"
+        mv stats.tar.gz "~{bamBase}_stats.manta.vcf.gz"
+        mv variants.tar.gz "~{bamBase}_variants.manta.vcf.gz"
+    >>>
+
+    runtime {
+        docker : "szarate/manta:v1.6.0"
+    }
+
+    output {
+        File mantaVCF = "~{bamBase}.manta.vcf.gz"
+        File mantaStats = "~{bamBase}_stats.manta.vcf.gz"
+        File mantaVariants = "~{bamBase}_variants.manta.vcf.gz"
     }
 }
