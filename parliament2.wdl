@@ -44,28 +44,43 @@ workflow Parliament2 {
                     bamBase = PrepareBreakdancer.bamBase
             }
         }
+
+        if (runManta) {
+            call Manta {
+                input:
+                    inputBam = inputBam,
+                    inputBai = inputBai,
+                    refFasta = refFasta,
+                    refIndex = refIndex,
+                    contigs = P2Prep.contigs
+            }
+        }
     }
 
-    # if (runManta) {
-    #     call Manta {
-    #         input:
-    #             inputBam = inputBam,
-    #             inputBai = inputBai,
-    #             refFasta = refFasta,
-    #             refIndex = refIndex,
-    #             contigs = P2Prep.contigs
-    #     }
-    # }
+    if (runBreakseq) {
+        call Breakseq { 
+            input: 
+                inputBam = inputBam,
+                inputBai = inputBai,
+                refFasta = refFasta,
+                refIndex = refIndex
+        }
+    }
 
-    # if (runBreakseq) {
-    #     call Breakseq { 
-    #         input: 
-    #             inputBam = inputBam,
-    #             inputBai = inputBai,
-    #             refFasta = refFasta,
-    #             refIndex = refIndex
-    #     }
-    # }
+    output {
+        File? breakdancerCTX = GatherBreakdancer.breakdancerCTX
+        File? breakdancerVCF = GatherBreakdancer.breakdancerVCF
+
+        File? breakseqGFF = Breakseq.breakseqGFF
+        File? breakseq_genotypedGFF = Breakseq.breakseq_genotypedGFF
+        File? breakseqVCF = Breakseq.breakseqVCF
+        File? breakseqVCFindex = Breakseq.breakseqVCFindex
+        File? breakseqBAM = Breakseq.breakseqBAM
+
+        File? mantaVCF = Manta.mantaVCF
+        File? mantaStats = Manta.mantaStats
+        File? mantaVariants = Manta.mantaVariants
+    }
 }
 
 task P2Prep {
@@ -145,10 +160,10 @@ task GatherBreakdancer {
     }
 
     command <<<
-        cat ~{sep=' ' breakdancerCtx} > breakdancer.output
+        cat ~{sep=' ' breakdancerCtx} > "~{bamBase}.breakdancer.ctx"
 
-        python /opt/bin/merge_files.py 1.0 breakdancer.output "~{bamBase}"
-        python /opt/bin/ctx_to_vcf.py < breakdancer.output > "~{bamBase}.breakdancer.vcf"
+        python /opt/bin/merge_files.py 1.0 "~{bamBase}.breakdancer.ctx" "~{bamBase}"
+        python /opt/bin/ctx_to_vcf.py < "~{bamBase}.breakdancer.ctx" > "~{bamBase}.breakdancer.vcf"
     >>>
 
     runtime {
@@ -156,101 +171,110 @@ task GatherBreakdancer {
     }
 
     output {
-        File breakdancerVcf = "~{bamBase}.breakdancer.vcf"
+        File breakdancerCTX = "~{bamBase}.breakdancer.ctx"
+        File breakdancerVCF = "~{bamBase}.breakdancer.vcf"
     }
 }
 
-# task Breakseq {
-#     input {
-#         File inputBam
-#         File inputBai
-#         File refFasta
-#         File refIndex
-#     }
+task Breakseq {
+    input {
+        File inputBam
+        File inputBai
+        File refFasta
+        File refIndex
+    }
 
-#     String bamBase='~{basename(inputBam,".bam")}'
-#     String refBase = basename(refFasta)
-#     String breakpointLibrary = if (refBase == "*hg19*") then "/breakseq2_bplib_20150129.hg19/breakseq2_bplib_20150129.hg19.gff" else (if refBase == "*hg38*" then "/bplib.hg38.gff" else "/breakseq2_bplib_20150129.hs37d5/breakseq2_bplib_20150129.gff")
+    String bamBase='~{basename(inputBam,".bam")}'
+    String refBase = basename(refFasta)
+    String breakpointLibrary = if (refBase == "*hg19*") then "/breakseq2_bplib_20150129.hg19/breakseq2_bplib_20150129.hg19.gff" else (if refBase == "*hg38*" then "/bplib.hg38.gff" else "/breakseq2_bplib_20150129.hs37d5/breakseq2_bplib_20150129.gff")
 
-#     command <<<
-#         mkdir -p "breakseq2"
-#         gunzip "~{refFasta}"
+    command <<<
+        mkdir -p "breakseq2"
+        gunzip "~{refFasta}"
 
-#         refName="~{refFasta}"
-#         refName="${refName%.gz}"
+        refName="~{refFasta}"
+        refName="${refName%.gz}"
 
-#         /miniconda/bin/run_breakseq2.py \
-#             --reference "${refName}" \
-#             --bams "~{inputBam}" \
-#             --work breakseq2 \
-#             --bwa /miniconda/bin/bwa \
-#             --samtools /miniconda/bin/samtools \
-#             --bplib_gff "~{breakpointLibrary}" \
-#             --nthreads "$(nproc)" \
-#             --sample "~{bamBase}"
+        /miniconda/bin/run_breakseq2.py \
+            --reference "${refName}" \
+            --bams "~{inputBam}" \
+            --work breakseq2 \
+            --bwa /miniconda/bin/bwa \
+            --samtools /miniconda/bin/samtools \
+            --bplib_gff "~{breakpointLibrary}" \
+            --nthreads "$(nproc)" \
+            --sample "~{bamBase}"
 
-#             mv breakseq2/breakseq.vcf.gz "~{bamBase}.vcf.gz"
-#             mv breakseq2/breakseq.vcf.gz.tbi "~{bamBase}.vcf.gz.tbi"
-#             mv breakseq2/breakseq.gff "~{bamBase}.gff"
-#             mv breakseq2/breakseq_genotyped.gff "~{bamBase}_genotyped.gff"
-#             mv breakseq2/final.bam "~{bamBase}.breakseq.bam"
-#     >>>
+            mv breakseq2/breakseq.vcf.gz "~{bamBase}.breakseq.vcf.gz"
+            mv breakseq2/breakseq.vcf.gz.tbi "~{bamBase}.breakseq.vcf.gz.tbi"
+            mv breakseq2/breakseq.gff "~{bamBase}.breakseq.gff"
+            mv breakseq2/breakseq_genotyped.gff "~{bamBase}_genotyped.breakseq.gff"
+            mv breakseq2/final.bam "~{bamBase}.breakseq.bam"
+    >>>
+    
+    Int diskGb = ceil(2.0 * size(inputBam, "G"))
 
-#     runtime {
-#         docker : "szarate/breakseq2:v2.2"
-#     }
+    runtime {
+        docker : "szarate/breakseq2:v2.2"
+        disks : "local-disk ${diskGb} SSD"
+        cpu : 8
+    }
 
-#     output {
-#         File breakseqGFF = "${bamBase}.breakseq.gff"
-#         File breakseq_genotypedGFF = "${bamBase}_genotyped.breakseq.gff"
-#         File breakseqVCF = "${bamBase}.breakseq.vcf.gz"
-#         File breakseqVCFindex = "${bamBase}.breakseq.vcf.gz.tbi"
-#         File breakseqBAM = "${bamBase}.breakseq.bam"
-#     }
-# }
+    output {
+        File breakseqGFF = "${bamBase}.breakseq.gff"
+        File breakseq_genotypedGFF = "${bamBase}_genotyped.breakseq.gff"
+        File breakseqVCF = "${bamBase}.breakseq.vcf.gz"
+        File breakseqVCFindex = "${bamBase}.breakseq.vcf.gz.tbi"
+        File breakseqBAM = "${bamBase}.breakseq.bam"
+    }
+}
 
-# task Manta {
-#     input {
-#         File inputBam
-#         File inputBai
-#         File refFasta
-#         File refIndex
-#         File contigs
-#     }
+task Manta {
+    input {
+        File inputBam
+        File inputBai
+        File refFasta
+        File refIndex
+        File contigs
+    }
 
-#     String bamBase='~{basename(inputBam,".bam")}'
+    String bamBase='~{basename(inputBam,".bam")}'
 
-#     command <<<
-#         mkdir -p "manta"
-#         gunzip "~{refFasta}"
+    command <<<
+        mkdir -p "manta"
+        gunzip "~{refFasta}"
 
-#         refName="~{refFasta}"
-#         refName="${refName%.gz}"
-#         region_string=""
+        refName="~{refFasta}"
+        refName="${refName%.gz}"
+        region_string=""
 
-#         while read line; do
-#             region_string="$region_string --region=$line"
-#         done < "~{contigs}"
+        while read line; do
+            region_string="$region_string --region=$line"
+        done < "~{contigs}"
 
-#         python /usr/local/bin/configManta.py --referenceFasta "${refName}" --normalBam "~{inputBam}" --runDir manta $region_string
+        python /usr/local/bin/configManta.py --referenceFasta "${refName}" --normalBam "~{inputBam}" --runDir manta $region_string
 
-#         python manta/runWorkflow.py -m local -j "$(nproc)"
+        python manta/runWorkflow.py -m local -j "$(nproc)"
 
-#         tar -czf stats.tar.gz -C manta/results/stats/ .
-#         tar -czf variants.tar.gz -C manta/results/variants/ .
+        tar -czf stats.tar.gz -C manta/results/stats/ .
+        tar -czf variants.tar.gz -C manta/results/variants/ .
 
-#         mv manta/results/variants/diploidSV.vcf.gz "~{bamBase}.manta.vcf.gz"
-#         mv stats.tar.gz "~{bamBase}_stats.manta.vcf.gz"
-#         mv variants.tar.gz "~{bamBase}_variants.manta.vcf.gz"
-#     >>>
+        mv manta/results/variants/diploidSV.vcf.gz "~{bamBase}.manta.vcf.gz"
+        mv stats.tar.gz "~{bamBase}_stats.manta.vcf.gz"
+        mv variants.tar.gz "~{bamBase}_variants.manta.vcf.gz"
+    >>>
 
-#     runtime {
-#         docker : "szarate/manta:v1.6.0"
-#     }
+    Int diskGb = ceil(2.0 * size(inputBam, "G"))
 
-#     output {
-#         File mantaVCF = "~{bamBase}.manta.vcf.gz"
-#         File mantaStats = "~{bamBase}_stats.manta.vcf.gz"
-#         File mantaVariants = "~{bamBase}_variants.manta.vcf.gz"
-#     }
-# }
+    runtime {
+        docker : "szarate/manta:v1.6.0"
+        disks : "local-disk ${diskGb} SSD"
+        cpu : 8
+    }
+
+    output {
+        File mantaVCF = "~{bamBase}.manta.vcf.gz"
+        File mantaStats = "~{bamBase}_stats.manta.vcf.gz"
+        File mantaVariants = "~{bamBase}_variants.manta.vcf.gz"
+    }
+}
