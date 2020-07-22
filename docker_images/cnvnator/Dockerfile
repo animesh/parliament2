@@ -85,4 +85,6 @@ RUN apt-get install -y \
     libreadline-dev 
 RUN make
 
+COPY cnvnator2vcf.pl /opt/bin/
+
 ENV PATH=$PATH:/CNVnator_v0.4.1/src
