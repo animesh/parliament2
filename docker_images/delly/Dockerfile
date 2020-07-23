@@ -1,5 +1,6 @@
 # Set the base image to Ubuntu 20.04
 FROM ubuntu:20.04
+ENV DEBIAN_FRONTEND=noninteractive
 
 # File Author / Maintainer
 MAINTAINER Samantha Zarate
@@ -19,5 +20,23 @@ RUN conda update -y conda
 
 RUN conda config --add channels bioconda
 RUN conda install -c bioconda delly
+
+# Install vcftools
+RUN apt-get update -y -q
+RUN apt-get install -y \
+    autoconf \
+    build-essential \
+    g++ \
+    git \
+    pkg-config \
+    zlib1g-dev
+
+RUN git clone https://github.com/vcftools/vcftools.git
+WORKDIR vcftools
+RUN ./autogen.sh
+RUN ./configure --disable-dependency-tracking && make && make install
+
+WORKDIR /
+COPY convert_header.py /opt/bin/
 
 ENV PATH=$PATH:/miniconda/bin
