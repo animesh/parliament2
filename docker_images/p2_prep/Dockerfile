@@ -21,4 +21,4 @@ RUN conda update -y conda
 RUN conda config --add channels bioconda
 RUN conda install -c bioconda samtools
 
-COPY get_contigs.py /
+COPY get_contigs.py /opt/bin/
