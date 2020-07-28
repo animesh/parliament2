@@ -143,14 +143,11 @@ workflow Parliament2 {
             }
         }
 
-        # call GatherDelly {
-        #     input:
-        #         dellyDelVCFs = DellyChrom.dellyDeletion,
-        #         dellyDupVCFs = DellyChrom.dellyDuplication,
-        #         dellyInsVCFs = DellyChrom.dellyInsertion,
-        #         dellyInvVCFs = DellyChrom.dellyInversion,
-        #         bamBase = P2Prep.bamBase
-        # }
+        call GatherLumpy {
+            input:
+                lumpyVCFs = LumpyChrom.lumpyOutput,
+                bamBase = P2Prep.bamBase
+        }
     }
 
     # output {
@@ -255,28 +252,30 @@ task LumpyChrom {
     }
 }
 
-# task GatherLumpy {
-#     input {
-#         Array[File] breakdancerCtx
-#         String bamBase
-#     }
+task GatherLumpy {
+    input {
+        Array[File] lumpyVCFs
+        String bamBase
+    }
 
-#     command <<<
-#         cat ~{sep=' ' breakdancerCtx} > "~{bamBase}.breakdancer.ctx"
+    command <<<
+        python /opt/bin/convert_header.py "~{bamBase}" "~{sep = ' ' lumpyVCFs}" | vcf-sort -c | uniq > "~{bamBase}.lumpy.vcf"
 
-#         python /opt/bin/merge_files.py 1.0 "~{bamBase}.breakdancer.ctx" "~{bamBase}"
-#         python /opt/bin/ctx_to_vcf.py < "~{bamBase}.breakdancer.ctx" > "~{bamBase}.breakdancer.vcf"
-#     >>>
+        python /opt/bin/vcf2bedpe.py -i "~{bamBase}.lumpy.vcf" -o "~{bamBase}.lumpy.gff"
+        python /opt/bin/lumpy2merge.py "~{bamBase}.lumpy.gff" "${prefix}" 1.0
 
-#     runtime {
-#         docker : "szarate/breakdancer:v1.4.3"
-#     }
+        ls -sh
+    >>>
 
-#     output {
-#         File breakdancerCTX = "~{bamBase}.breakdancer.ctx"
-#         File breakdancerVCF = "~{bamBase}.breakdancer.vcf"
-#     }
-# }
+    runtime {
+        docker : "szarate/lumpy-sv:v0.3.0"
+    }
+
+    output {
+        File lumpyGFF = "~{bamBase}.lumpy.gff"
+        File lumpyVCF = "~{bamBase}.lumpy.vcf"
+    }
+}
 
 ###
 # BREAKDANCER

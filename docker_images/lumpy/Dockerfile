@@ -30,8 +30,27 @@ RUN mkdir -p /miniconda/bin/scripts
 
 RUN tar -xzf lumpy-sv.tar.gz && rm lumpy-sv.tar.gz && cp -r lumpy-sv/scripts/* /miniconda/bin/scripts && rm -rf lumpy-sv/
 
+# Install vcftools
+RUN apt-get update -y -q
+RUN apt-get install -y \
+    autoconf \
+    build-essential \
+    g++ \
+    git \
+    pkg-config \
+    zlib1g-dev
+
+RUN git clone https://github.com/vcftools/vcftools.git
+WORKDIR vcftools
+RUN ./autogen.sh
+RUN ./configure --disable-dependency-tracking && make && make install
+
 COPY b37.bed /opt/
 COPY hg19.bed /opt/
 COPY hg38.bed /opt/
+
+COPY convert_header.py /opt/bin/
+COPY lumpy2merge.py /opt/bin/
+COPY vcf2bedpe.py /opt/bin/
 
 ENV PATH=$PATH:/miniconda/bin
