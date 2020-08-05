@@ -13,6 +13,7 @@ workflow Parliament2 {
         Boolean runDelly
         Boolean runLumpy
         Boolean runManta
+        Boolean genotypeVCFs
     }
 
     if (runBreakdancer || runCNVnator || runDelly || runLumpy || runManta) {
@@ -47,6 +48,17 @@ workflow Parliament2 {
                     breakdancerCtx = BreakdancerChrom.breakdancerOutput,
                     bamBase = P2Prep.bamBase
             }
+
+            if (genotypeVCFs) {
+                call SVTyper as typeBreakdancer {
+                    input:
+                        inputBam = inputBam,
+                        inputBai = inputBai,
+                        refFasta = refFasta,
+                        refIndex = refIndex,
+                        inputVCF = GatherBreakdancer.breakdancerVCF
+                }
+            }
         }
         
         if (runCNVnator) {
@@ -65,6 +77,17 @@ workflow Parliament2 {
                 input:
                     CNVnatorCalls = CNVnatorChrom.CNVnatorOutput,
                     bamBase = P2Prep.bamBase
+            }
+
+            if (genotypeVCFs) {
+                call SVTyper as typeCNVnator {
+                    input:
+                        inputBam = inputBam,
+                        inputBai = inputBai,
+                        refFasta = refFasta,
+                        refIndex = refIndex,
+                        inputVCF = GatherCNVnator.CNVnatorVCF
+                }
             }
         }
 
@@ -98,6 +121,44 @@ workflow Parliament2 {
                         dellyInvVCFs = DellyChrom.dellyInversion,
                         bamBase = P2Prep.bamBase
                 }
+
+                if (genotypeVCFs) {
+                    call SVTyper as typeDellyDel {
+                        input:
+                            inputBam = inputBam,
+                            inputBai = inputBai,
+                            refFasta = refFasta,
+                            refIndex = refIndex,
+                            inputVCF = GatherDelly.dellyDeletion
+                    }
+
+                    call SVTyper as typeDellyDup {
+                        input:
+                            inputBam = inputBam,
+                            inputBai = inputBai,
+                            refFasta = refFasta,
+                            refIndex = refIndex,
+                            inputVCF = GatherDelly.dellyDuplication
+                    }
+
+                    call SVTyper as typeDellyIns {
+                        input:
+                            inputBam = inputBam,
+                            inputBai = inputBai,
+                            refFasta = refFasta,
+                            refIndex = refIndex,
+                            inputVCF = GatherDelly.dellyInsertion
+                    }
+
+                    call SVTyper as typeDellyInv {
+                        input:
+                            inputBam = inputBam,
+                            inputBai = inputBai,
+                            refFasta = refFasta,
+                            refIndex = refIndex,
+                            inputVCF = GatherDelly.dellyInversion
+                    }
+                }
             }
 
             if (runLumpy) {
@@ -116,6 +177,17 @@ workflow Parliament2 {
                         lumpyVCFs = LumpyChrom.lumpyOutput,
                         bamBase = P2Prep.bamBase
                 }
+
+                if (genotypeVCFs) {
+                    call SVTyper as typeLumpy {
+                        input:
+                            inputBam = inputBam,
+                            inputBai = inputBai,
+                            refFasta = refFasta,
+                            refIndex = refIndex,
+                            inputVCF = GatherLumpy.lumpyVCF
+                    }
+                }
             }
         }
 
@@ -128,6 +200,17 @@ workflow Parliament2 {
                     refIndex = refIndex,
                     contigs = P2Prep.contigs
             }
+
+            if (genotypeVCFs) {
+                call SVTyper as typeManta {
+                    input:
+                        inputBam = inputBam,
+                        inputBai = inputBai,
+                        refFasta = refFasta,
+                        refIndex = refIndex,
+                        inputVCF = Manta.mantaVCF
+                }
+            }
         }
     }
 
@@ -139,7 +222,28 @@ workflow Parliament2 {
                 refFasta = refFasta,
                 refIndex = refIndex
         }
+
+        if (genotypeVCFs) {
+            call SVTyper as typeBreakseq {
+                input:
+                    inputBam = inputBam,
+                    inputBai = inputBai,
+                    refFasta = refFasta,
+                    refIndex = refIndex,
+                    inputVCF = Breakseq.breakseqVCF
+            }
+        }
     }
+
+    # File? breakdancerVCF = GatherBreakdancer.breakdancerVCF
+    # File? breakseqVCF = Breakseq.breakseqVCF
+    # File? CNVnatorVCF = GatherCNVnator.CNVnatorVCF
+    # File? dellyDel = GatherDelly.dellyDeletion
+    # File? dellyDup = GatherDelly.dellyDuplication
+    # File? dellyIns = GatherDelly.dellyInsertion
+    # File? dellyInv = GatherDelly.dellyInversion
+    # File? lumpyVCF = GatherLumpy.lumpyVCF
+    # File? mantaVCF = Manta.mantaVCF
 
     output {
         File? breakdancerCTX = GatherBreakdancer.breakdancerCTX
@@ -221,9 +325,39 @@ task SplitByChrom {
     }
 }
 
+# SVTyper: genotypes SVs
+task SVTyper {
+    input {
+        File inputBam
+        File inputBai
+        File refFasta
+        File refIndex
+        File inputVCF
+    }
+
+    String vcfBase='~{basename(inputVCF,".vcf")}'
+
+    command <<<
+        python /opt/bin/ciend_cpos.py < "~{inputVCF}" 1000 > tmp.vcf
+        svtyper-sso --core "$(nproc)" -i tmp.vcf --bam "~{inputBam}" --ref_fasta "~{refFasta}" -o "~{vcfBase}.svtyped.vcf"
+    >>>
+
+    Int diskGb = ceil(2.0 * size(inputBam, "G"))
+
+    runtime {
+        docker : "szarate/svtyper:v0.7.0"
+        disks : "local-disk ${diskGb} SSD"
+    }
+
+    output {
+        File svtypedVCF = "~{vcfBase}.svtyped.vcf"
+    }
+}
+
 ###
-# BREAKDANCER
+# SV CALLERS
 ###
+# Breakdancer
 task PrepareBreakdancer {
     input {
         File inputBam
@@ -294,9 +428,7 @@ task GatherBreakdancer {
     }
 }
 
-###
-# BREAKSEQ
-###
+# BreakSeq
 task Breakseq {
     input {
         File inputBam
@@ -326,7 +458,9 @@ task Breakseq {
             --nthreads "$(nproc)" \
             --sample "~{bamBase}"
 
-            mv breakseq2/breakseq.vcf.gz "~{bamBase}.breakseq.vcf.gz"
+            gunzip breakseq2/breakseq.vcf.gz
+
+            mv breakseq2/breakseq.vcf "~{bamBase}.breakseq.vcf"
             mv breakseq2/breakseq.vcf.gz.tbi "~{bamBase}.breakseq.vcf.gz.tbi"
             mv breakseq2/breakseq.gff "~{bamBase}.breakseq.gff"
             mv breakseq2/breakseq_genotyped.gff "~{bamBase}_genotyped.breakseq.gff"
@@ -344,15 +478,13 @@ task Breakseq {
     output {
         File breakseqGFF = "${bamBase}.breakseq.gff"
         File breakseq_genotypedGFF = "${bamBase}_genotyped.breakseq.gff"
-        File breakseqVCF = "${bamBase}.breakseq.vcf.gz"
+        File breakseqVCF = "${bamBase}.breakseq.vcf"
         File breakseqVCFindex = "${bamBase}.breakseq.vcf.gz.tbi"
         File breakseqBAM = "${bamBase}.breakseq.bam"
     }
 }
 
-###
-# CNVNATOR
-###
+# CNVnator
 task CNVnatorChrom {
     input {
         File inputBam
@@ -405,9 +537,7 @@ task GatherCNVnator {
     }
 }
 
-###
-# DELLY
-###
+# Delly
 task DellyChrom {
     input {
         File inputBam
@@ -419,10 +549,15 @@ task DellyChrom {
     String contig = '~{basename(inputBam,".bam")}'
 
     command <<<
-        delly call -t DEL -o "~{contig}.delly.deletion.vcf" -g "~{refFasta}" "~{inputBam}"
-        delly call -t DUP -o "~{contig}.delly.duplication.vcf" -g "~{refFasta}" "~{inputBam}"
-        delly call -t INS -o "~{contig}.delly.insertion.vcf" -g "~{refFasta}" "~{inputBam}"
-        delly call -t INV -o "~{contig}.delly.inversion.vcf" -g "~{refFasta}" "~{inputBam}"
+        delly call -t DEL -o "~{contig}.delly.deletion.bcf" -g "~{refFasta}" "~{inputBam}"
+        delly call -t DUP -o "~{contig}.delly.duplication.bcf" -g "~{refFasta}" "~{inputBam}"
+        delly call -t INS -o "~{contig}.delly.insertion.bcf" -g "~{refFasta}" "~{inputBam}"
+        delly call -t INV -o "~{contig}.delly.inversion.bcf" -g "~{refFasta}" "~{inputBam}"
+
+        bcftools view "~{contig}.delly.deletion.bcf" > "~{contig}.delly.deletion.vcf"
+        bcftools view "~{contig}.delly.duplication.bcf" > "~{contig}.delly.duplication.vcf"
+        bcftools view "~{contig}.delly.insertion.bcf" > "~{contig}.delly.insertion.vcf"
+        bcftools view "~{contig}.delly.inversion.bcf" > "~{contig}.delly.inversion.vcf"
     >>>
 
     runtime {
@@ -466,9 +601,7 @@ task GatherDelly {
     }
 }
 
-###
-# LUMPY
-###
+# Lumpy
 task LumpyChrom {
     input {
         File inputBam
@@ -519,9 +652,7 @@ task GatherLumpy {
     }
 }
 
-###
-# MANTA
-###
+# Manta
 task Manta {
     input {
         File inputBam
@@ -552,7 +683,8 @@ task Manta {
         tar -czf stats.tar.gz -C manta/results/stats/ .
         tar -czf variants.tar.gz -C manta/results/variants/ .
 
-        mv manta/results/variants/diploidSV.vcf.gz "~{bamBase}.manta.vcf.gz"
+        gunzip manta/results/variants/diploidSV.vcf.gz
+        mv manta/results/variants/diploidSV.vcf "~{bamBase}.manta.vcf"
         mv stats.tar.gz "~{bamBase}_stats.manta.vcf.gz"
         mv variants.tar.gz "~{bamBase}_variants.manta.vcf.gz"
     >>>
@@ -566,7 +698,7 @@ task Manta {
     }
 
     output {
-        File mantaVCF = "~{bamBase}.manta.vcf.gz"
+        File mantaVCF = "~{bamBase}.manta.vcf"
         File mantaStats = "~{bamBase}_stats.manta.vcf.gz"
         File mantaVariants = "~{bamBase}_variants.manta.vcf.gz"
     }

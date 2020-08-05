@@ -20,4 +20,6 @@ RUN conda update -y conda
 RUN conda config --add channels bioconda
 RUN conda install -c bioconda svtyper
 
+COPY ciend_cpos.py /opt/bin/
+
 ENV PATH=$PATH:/miniconda/bin

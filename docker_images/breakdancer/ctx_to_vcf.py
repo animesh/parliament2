@@ -18,4 +18,4 @@ for line in sys.stdin:
     svtype = tab_split[6]
     if svtype != "INS" and svtype != "DEL" and svtype != "INV":
         continue
-    print("%s\t%d\t.\tN\t.\t.\t.\tEND=%d;CIPOS=-20,20;CIEND=-20,20;SVTYPE=%s\tGT\t./.".format(c1, min(pos, hi), max(pos, hi), svtype))
+    print("{}\t{}\t.\tN\t.\t.\t.\tEND={};CIPOS=-20,20;CIEND=-20,20;SVTYPE={}\tGT\t./.".format(c1, min(pos, hi), max(pos, hi), svtype))

@@ -19,7 +19,7 @@ ENV PATH=/miniconda/bin:${PATH}
 RUN conda update -y conda
 
 RUN conda config --add channels bioconda
-RUN conda install -c bioconda delly
+RUN conda install -c bioconda delly bcftools
 
 # Install vcftools
 RUN apt-get update -y -q
