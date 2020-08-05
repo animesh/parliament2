@@ -1,5 +1,6 @@
 # Set the base image to Ubuntu 20.04
 FROM ubuntu:20.04
+ENV DEBIAN_FRONTEND=noninteractive
 
 # File Author / Maintainer
 MAINTAINER Samantha Zarate
@@ -20,4 +21,23 @@ RUN conda update -y conda
 RUN conda config --add channels bioconda
 RUN conda install -c bioconda survivor
 
-ENV PATH=$PATH:/miniconda/bin
+# Install vcftools
+RUN apt-get update -y -q
+RUN apt-get install -y \
+    autoconf \
+    build-essential \
+    g++ \
+    git \
+    pkg-config \
+    zlib1g-dev
+
+RUN git clone https://github.com/vcftools/vcftools.git
+WORKDIR vcftools
+RUN ./autogen.sh
+RUN ./configure --disable-dependency-tracking && make && make install
+
+COPY combine_combined.py /opt/bin/
+COPY all.phred.txt /opt/bin/
+COPY correct_max_position.py /opt/bin/
+
+ENV PATH=$PATH:/miniconda/pkgs/survivor-1.0.7-he513fc3_0/bin/
