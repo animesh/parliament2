@@ -14,6 +14,8 @@ workflow Parliament2 {
         Boolean runLumpy
         Boolean runManta
         Boolean genotypeVCFs
+        Boolean runSURVIVOR
+        Boolean runJasmine
     }
 
     call P2Prep {
@@ -235,18 +237,40 @@ workflow Parliament2 {
 
     if (genotypeVCFs) {
         Array[File] svtypedVCFs = glob("*.svtyped.vcf")
-        call SURVIVOR as svtypedSurvivor {
-            input:
-                vcfs = svtypedVCFs,
-                bamBase = P2Prep.bamBase
+
+        if (runSURVIVOR) {
+            call SURVIVOR as svtypedSurvivor {
+                input:
+                    vcfs = svtypedVCFs,
+                    bamBase = P2Prep.bamBase
+            }
+        }
+
+        if (runJasmine) {
+            call Jasmine as svtypedJasmine {
+                input:
+                    vcfs = svtypedVCFs,
+                    bamBase = P2Prep.bamBase
+            }
         }
     }
     if (!genotypeVCFs) {
         Array[File] VCFs = glob("*.vcf")
-        call SURVIVOR as vcfSurvivor {
-            input:
-                vcfs = VCFs,
-                bamBase = P2Prep.bamBase
+
+        if (runSURVIVOR) {
+            call SURVIVOR as vcfSurvivor {
+                input:
+                    vcfs = VCFs,
+                    bamBase = P2Prep.bamBase
+            }
+        }
+
+        if (runJasmine) {
+            call Jasmine as vcfJasmine {
+                input:
+                    vcfs = VCFs,
+                    bamBase = P2Prep.bamBase
+            }
         }
     }
 
@@ -288,6 +312,9 @@ workflow Parliament2 {
         File? survivorTypedQualVCF = svtypedSurvivor.survivorQualVCF
         File? survivorSortedVCF = vcfSurvivor.survivorSortedVCF
         File? survivorQualVCF = vcfSurvivor.survivorQualVCF
+
+        File? jasmineTyped = svtypedJasmine.jasmineVCF
+        File? jasmineVCF = vcfJasmine.jasmineVCF
     }
 }
 
@@ -748,5 +775,26 @@ task SURVIVOR {
     output {
         File survivorSortedVCF = "~{bamBase}.survivor.sorted.vcf"
         File survivorQualVCF = "~{bamBase}.survivor.qual.vcf"
+    }
+}
+
+# Jasmine: alternative to SURVIVOR
+task Jasmine {
+    input {
+        Array[File] vcfs
+        String bamBase
+    }
+
+    command <<<
+        echo "~{sep='\n' vcfs}" > jasmine_inputs
+        java -jar /Jasmine/jasmine.jar -cp src Main file_list=jasmine_inputs out_file="~{bamBase}.jasmine.vcf"
+    >>>
+
+    runtime {
+        docker : "szarate/jasmine:v1.0.2"
+    }
+
+    output {
+        File jasmineVCF = "~{bamBase}.jasmine.vcf"
     }
 }
