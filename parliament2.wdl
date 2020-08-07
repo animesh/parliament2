@@ -236,7 +236,18 @@ workflow Parliament2 {
     }
 
     if (genotypeVCFs) {
-        Array[File] svtypedVCFs = glob("*.svtyped.vcf")
+        Array[File?] potentialSVtyped = [ typeBreakdancer.svtypedVCF,
+                                          typeBreakseq.svtypedVCF,
+                                          typeCNVnator.svtypedVCF,
+                                          typeDellyDel.svtypedVCF,
+                                          typeDellyDup.svtypedVCF,
+                                          typeDellyIns.svtypedVCF,
+                                          typeDellyInv.svtypedVCF,
+                                          typeLumpy.svtypedVCF,
+                                          typeManta.svtypedVCF
+                                        ]
+        
+        Array[File] svtypedVCFs = select_all(potentialSVtyped)
 
         if (runSURVIVOR) {
             call SURVIVOR as svtypedSurvivor {
@@ -254,8 +265,20 @@ workflow Parliament2 {
             }
         }
     }
+
     if (!genotypeVCFs) {
-        Array[File] VCFs = glob("*.vcf")
+        Array[File?] potentialVCF = [ GatherBreakdancer.breakdancerVCF,
+                                      Breakseq.breakseqVCF,
+                                      GatherCNVnator.CNVnatorVCF,
+                                      GatherDelly.dellyDeletion,
+                                      GatherDelly.dellyDuplication,
+                                      GatherDelly.dellyInsertion,
+                                      GatherDelly.dellyInversion,
+                                      GatherLumpy.lumpyVCF,
+                                      Manta.mantaVCF,                
+                                    ]
+        
+        Array[File] VCFs = select_all(potentialVCF)
 
         if (runSURVIVOR) {
             call SURVIVOR as vcfSurvivor {
