@@ -16,6 +16,7 @@ workflow Parliament2 {
         Boolean genotypeVCFs
         Boolean runSURVIVOR
         Boolean runJasmine
+        Boolean visualizeSVs
     }
 
     call P2Prep {
@@ -297,6 +298,42 @@ workflow Parliament2 {
         }
     }
 
+    if ((runSURVIVOR || runJasmine) && visualizeSVs) {
+        if (runSURVIVOR) {
+            File survivorVCF = select_first([ svtypedSurvivor.survivorQualVCF, vcfSurvivor.survivorQualVCF ])
+
+            scatter (chromosome in chromosomes) {
+                call svvizChrom as vizSURVIVOR {
+                    input:
+                        inputBam = inputBam,
+                        inputBai = inputBai,
+                        refFasta = refFasta,
+                        refIndex = refIndex,
+                        vcf = survivorVCF,
+                        contig = chromosome
+                }
+            }
+        }
+
+        if (runJasmine) {
+            File jasmineVCF = select_first([ svtypedJasmine.jasmineVCF, vcfJasmine.jasmineVCF ])
+
+            scatter (chromosome in chromosomes) {
+                call svvizChrom as vizJasmine {
+                    input:
+                        inputBam = inputBam,
+                        inputBai = inputBai,
+                        refFasta = refFasta,
+                        refIndex = refIndex,
+                        vcf = survivorVCF,
+                        contig = chromosome
+                }
+            }
+        }
+
+        
+    }
+
     output {
         File? breakdancerCTX = GatherBreakdancer.breakdancerCTX
         File? breakdancerVCF = GatherBreakdancer.breakdancerVCF
@@ -337,7 +374,7 @@ workflow Parliament2 {
         File? survivorQualVCF = vcfSurvivor.survivorQualVCF
 
         File? jasmineTyped = svtypedJasmine.jasmineVCF
-        File? jasmineVCF = vcfJasmine.jasmineVCF
+        File? jasmineUntyped = vcfJasmine.jasmineVCF
     }
 }
 
@@ -819,5 +856,40 @@ task Jasmine {
 
     output {
         File jasmineVCF = "~{bamBase}.jasmine.vcf"
+    }
+}
+
+# svviz: visualize SVs
+task svvizChrom {
+    input {
+        File inputBam
+        File inputBai
+        File refFasta
+        File refIndex
+        File? vcf
+        String contig
+    }
+
+    command <<<
+        grep "\#" "~{vcf}" > header.txt
+        grep "^~{contig}" "~{vcf}" > "~{contig}".txt
+        cat header.txt "~{contig}".txt > "~{contig}".vcf
+
+        mkdir -p "~{contig}_outputs/"
+        svviz --pair-min-mapq 30 --max-deletion-size 5000 --max-reads 10000 --fast --type batch --summary svviz_summary.tsv -b "~{inputBam}" "~{refFasta}" "~{contig}.vcf" --export "~{contig}_outputs/"
+
+        tar -czvf "~{contig}.tar.gz" "~{contig}_outputs/"
+    >>>
+
+    Int diskGb = ceil(2.0 * size(inputBam, "G"))
+
+    runtime {
+        docker : "szarate/svviz:v1.6.2"
+        disks : "local-disk ${diskGb} SSD"
+        cpu : 8
+    }
+
+    output {
+        File svvizTar = "~{contig}.tar.gz"
     }
 }
