@@ -303,7 +303,7 @@ workflow Parliament2 {
             File survivorVCF = select_first([ svtypedSurvivor.survivorQualVCF, vcfSurvivor.survivorQualVCF ])
 
             scatter (chromosome in chromosomes) {
-                call svvizChrom as vizSURVIVOR {
+                call svvizChrom as vizSURVIVORchrom {
                     input:
                         inputBam = inputBam,
                         inputBai = inputBai,
@@ -312,6 +312,13 @@ workflow Parliament2 {
                         vcf = survivorVCF,
                         contig = chromosome
                 }
+            }
+
+            call GatherSvviz as vizSURVIVOR {
+                input:
+                    tars = vizSURVIVORchrom.svvizTar,
+                    bamBase = P2Prep.bamBase,
+                    merger = "survivor"
             }
         }
 
@@ -319,7 +326,7 @@ workflow Parliament2 {
             File jasmineVCF = select_first([ svtypedJasmine.jasmineVCF, vcfJasmine.jasmineVCF ])
 
             scatter (chromosome in chromosomes) {
-                call svvizChrom as vizJasmine {
+                call svvizChrom as vizJasmineChrom {
                     input:
                         inputBam = inputBam,
                         inputBai = inputBai,
@@ -329,9 +336,14 @@ workflow Parliament2 {
                         contig = chromosome
                 }
             }
-        }
 
-        
+            call GatherSvviz as vizJasmine {
+                input:
+                    tars = vizJasmineChrom.svvizTar,
+                    bamBase = P2Prep.bamBase,
+                    merger = "jasmine"
+            }
+        }
     }
 
     output {
@@ -375,6 +387,9 @@ workflow Parliament2 {
 
         File? jasmineTyped = svtypedJasmine.jasmineVCF
         File? jasmineUntyped = vcfJasmine.jasmineVCF
+
+        File? survivorViz = vizSURVIVOR.finalSvviz
+        File? jasmineViz = vizJasmine.finalSvviz
     }
 }
 
@@ -891,5 +906,31 @@ task svvizChrom {
 
     output {
         File svvizTar = "~{contig}.tar.gz"
+    }
+}
+
+task GatherSvviz {
+    input {
+        Array[File] tars
+        String bamBase
+        String merger
+    }
+
+    command <<<
+        mkdir -p svviz_outputs/
+        echo "~{sep='\n' tars}" > all_tars
+
+        while read line; do
+            tar -xzf "${line}" -C svviz_outputs/
+        done < all_tars
+        tar -czf "~{bamBase}.~{merger}.svviz.tar.gz" svviz_outputs/
+    >>>
+    
+    runtime {
+        docker : "ubuntu:20.04"
+    }
+
+    output {
+        File finalSvviz = "~{bamBase}.~{merger}.svviz.tar.gz"
     }
 }
