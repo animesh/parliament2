@@ -2,8 +2,8 @@ version 1.0
 
 workflow Parliament2 {
     input {
-        File inputBam
-        File inputBai
+        File alignmentFile
+        File alignmentIndex
         File refFasta 
         File refIndex
         Boolean filterContigs
@@ -21,7 +21,9 @@ workflow Parliament2 {
 
     call P2Prep {
         input:
-            inputBam = inputBam,
+            inputFile = alignmentFile,
+            inputIndex = alignmentIndex,
+            refFasta = refFasta,
             filterContigs = filterContigs
     }
 
@@ -30,16 +32,14 @@ workflow Parliament2 {
     if (runBreakdancer) {
         call PrepareBreakdancer {
             input:
-                inputBam = inputBam
+                inputBam = P2Prep.outputBam
         }
 
         scatter (chromosome in chromosomes) {
             call BreakdancerChrom {
                 input:
-                    inputBam = inputBam,
-                    inputBai = inputBai,
-                    refFasta = refFasta,
-                    refIndex = refIndex,
+                    inputBam = P2Prep.outputBam,
+                    inputBai = P2Prep.outputBai,
                     configFile = PrepareBreakdancer.configFile,
                     contig = chromosome
             }
@@ -54,8 +54,8 @@ workflow Parliament2 {
         if (genotypeVCFs) {
             call SVTyper as typeBreakdancer {
                 input:
-                    inputBam = inputBam,
-                    inputBai = inputBai,
+                    inputBam = P2Prep.outputBam,
+                    inputBai = P2Prep.outputBai,
                     refFasta = refFasta,
                     refIndex = refIndex,
                     inputVCF = GatherBreakdancer.breakdancerVCF
@@ -67,8 +67,8 @@ workflow Parliament2 {
         scatter (chromosome in chromosomes) {
             call CNVnatorChrom {
                 input:
-                    inputBam = inputBam,
-                    inputBai = inputBai,
+                    inputBam = P2Prep.outputBam,
+                    inputBai = P2Prep.outputBai,
                     refFasta = refFasta,
                     refIndex = refIndex,
                     contig = chromosome
@@ -84,8 +84,8 @@ workflow Parliament2 {
         if (genotypeVCFs) {
             call SVTyper as typeCNVnator {
                 input:
-                    inputBam = inputBam,
-                    inputBai = inputBai,
+                    inputBam = P2Prep.outputBam,
+                    inputBai = P2Prep.outputBai,
                     refFasta = refFasta,
                     refIndex = refIndex,
                     inputVCF = GatherCNVnator.CNVnatorVCF
@@ -97,8 +97,8 @@ workflow Parliament2 {
         scatter (chromosome in chromosomes) {
             call SplitByChrom {
                 input:
-                    inputBam = inputBam,
-                    inputBai = inputBai,
+                    inputBam = P2Prep.outputBam,
+                    inputBai = P2Prep.outputBai,
                     contig = chromosome
             }
         }
@@ -127,8 +127,8 @@ workflow Parliament2 {
             if (genotypeVCFs) {
                 call SVTyper as typeDellyDel {
                     input:
-                        inputBam = inputBam,
-                        inputBai = inputBai,
+                        inputBam = P2Prep.outputBam,
+                        inputBai = P2Prep.outputBai,
                         refFasta = refFasta,
                         refIndex = refIndex,
                         inputVCF = GatherDelly.dellyDeletion
@@ -136,8 +136,8 @@ workflow Parliament2 {
 
                 call SVTyper as typeDellyDup {
                     input:
-                        inputBam = inputBam,
-                        inputBai = inputBai,
+                        inputBam = P2Prep.outputBam,
+                        inputBai = P2Prep.outputBai,
                         refFasta = refFasta,
                         refIndex = refIndex,
                         inputVCF = GatherDelly.dellyDuplication
@@ -145,8 +145,8 @@ workflow Parliament2 {
 
                 call SVTyper as typeDellyIns {
                     input:
-                        inputBam = inputBam,
-                        inputBai = inputBai,
+                        inputBam = P2Prep.outputBam,
+                        inputBai = P2Prep.outputBai,
                         refFasta = refFasta,
                         refIndex = refIndex,
                         inputVCF = GatherDelly.dellyInsertion
@@ -154,8 +154,8 @@ workflow Parliament2 {
 
                 call SVTyper as typeDellyInv {
                     input:
-                        inputBam = inputBam,
-                        inputBai = inputBai,
+                        inputBam = P2Prep.outputBam,
+                        inputBai = P2Prep.outputBai,
                         refFasta = refFasta,
                         refIndex = refIndex,
                         inputVCF = GatherDelly.dellyInversion
@@ -183,8 +183,8 @@ workflow Parliament2 {
             if (genotypeVCFs) {
                 call SVTyper as typeLumpy {
                     input:
-                        inputBam = inputBam,
-                        inputBai = inputBai,
+                        inputBam = P2Prep.outputBam,
+                        inputBai = P2Prep.outputBai,
                         refFasta = refFasta,
                         refIndex = refIndex,
                         inputVCF = GatherLumpy.lumpyVCF
@@ -196,8 +196,8 @@ workflow Parliament2 {
     if (runManta) {
         call Manta {
             input:
-                inputBam = inputBam,
-                inputBai = inputBai,
+                inputBam = P2Prep.outputBam,
+                inputBai = P2Prep.outputBai,
                 refFasta = refFasta,
                 refIndex = refIndex,
                 contigs = P2Prep.contigs
@@ -206,8 +206,8 @@ workflow Parliament2 {
         if (genotypeVCFs) {
             call SVTyper as typeManta {
                 input:
-                    inputBam = inputBam,
-                    inputBai = inputBai,
+                    inputBam = P2Prep.outputBam,
+                    inputBai = P2Prep.outputBai,
                     refFasta = refFasta,
                     refIndex = refIndex,
                     inputVCF = Manta.mantaVCF
@@ -218,17 +218,18 @@ workflow Parliament2 {
     if (runBreakseq) {
         call Breakseq { 
             input: 
-                inputBam = inputBam,
-                inputBai = inputBai,
+                inputBam = P2Prep.outputBam,
+                inputBai = P2Prep.outputBai,
                 refFasta = refFasta,
-                refIndex = refIndex
+                refIndex = refIndex,
+                reference = P2Prep.refType
         }
 
         if (genotypeVCFs) {
             call SVTyper as typeBreakseq {
                 input:
-                    inputBam = inputBam,
-                    inputBai = inputBai,
+                    inputBam = P2Prep.outputBam,
+                    inputBai = P2Prep.outputBai,
                     refFasta = refFasta,
                     refIndex = refIndex,
                     inputVCF = Breakseq.breakseqVCF
@@ -305,8 +306,8 @@ workflow Parliament2 {
             scatter (chromosome in chromosomes) {
                 call svvizChrom as vizSURVIVORchrom {
                     input:
-                        inputBam = inputBam,
-                        inputBai = inputBai,
+                        inputBam = P2Prep.outputBam,
+                        inputBai = P2Prep.outputBai,
                         refFasta = refFasta,
                         refIndex = refIndex,
                         vcf = survivorVCF,
@@ -328,11 +329,11 @@ workflow Parliament2 {
             scatter (chromosome in chromosomes) {
                 call svvizChrom as vizJasmineChrom {
                     input:
-                        inputBam = inputBam,
-                        inputBai = inputBai,
+                        inputBam = P2Prep.outputBam,
+                        inputBai = P2Prep.outputBai,
                         refFasta = refFasta,
                         refIndex = refIndex,
-                        vcf = survivorVCF,
+                        vcf = jasmineVCF,
                         contig = chromosome
                 }
             }
@@ -399,15 +400,45 @@ workflow Parliament2 {
 # P2Prep: Generates contigs and bamBase string for later use
 task P2Prep {
     input {
-        File inputBam
+        File inputFile
+        File inputIndex
+        File refFasta
         Boolean filterContigs
     }
 
+    String inputName = "~{basename(inputFile)}"
+    String bamName =  sub("~{inputName}", ".cram", ".bam")
+
     command <<<
-        samtools view -H "~{inputBam}" | python /opt/bin/get_contigs.py "~{filterContigs}" > contigs
+        bam_base="~{inputName}"
+        if [[ "${bam_base}" == *".cram" ]]; then
+            samtools view -b -@ "$(nproc)" -T "~{refFasta}" -o "~{bamName}" "~{inputFile}"
+            samtools view -H "~{bamName}" | python /opt/bin/get_contigs.py "~{filterContigs}" > contigs
+            samtools index "~{bamName}"
+            bam_base="${bam_base%.cram}"
+        else
+            samtools view -H "~{inputFile}" | python /opt/bin/get_contigs.py "~{filterContigs}" > contigs
+            mv "~{inputFile}" "~{bamName}"
+            mv "~{inputIndex}" "~{bamName}.bai"
+            bam_base="${bam_base%.bam}"
+        fi
+
+        ref_genome_type=""
+        if [[ "~{basename(refFasta)}" == *"hg19"* ]]; then
+            ref_genome_type="hg19"
+        elif [[ "~{basename(refFasta)}" == *"hg38"* || "~{basename(refFasta)}" == *"GRCh38"* || "~{basename(refFasta)}" == *"hs38DH"* ]]; then
+            ref_genome_type="hg38"
+        elif [[ "~{basename(refFasta)}" == *"hs37d5"* ]]; then
+            ref_genome_type="hs37d5"
+        else
+            ref_genome_type="other"
+        fi
+
+        echo "${ref_genome_type}"
+        echo "${bam_base}"
     >>>
 
-    Int diskGb = ceil(2.0 * size(inputBam, "G"))
+    Int diskGb = ceil(3.0 * size(inputFile, "G"))
     
     runtime {
         docker : "szarate/p2_prep:v0.0.1"
@@ -416,7 +447,10 @@ task P2Prep {
 
     output {
         File contigs = "contigs"
-        String bamBase = '~{basename(inputBam,".bam")}'
+        File outputBam = "~{bamName}"
+        File outputBai = "~{bamName}.bai"
+        String refType = read_lines(stdout())[0]
+        String bamBase = read_lines(stdout())[1]
     }
 }
 
@@ -475,8 +509,6 @@ task BreakdancerChrom {
     input {
         File inputBam
         File inputBai
-        File refFasta
-        File refIndex
         File configFile
         String contig
     }
@@ -527,11 +559,11 @@ task Breakseq {
         File inputBai
         File refFasta
         File refIndex
+        String reference
     }
 
     String bamBase='~{basename(inputBam,".bam")}'
-    String refBase = basename(refFasta)
-    String breakpointLibrary = if (refBase == "*hg19*") then "/breakseq2_bplib_20150129.hg19/breakseq2_bplib_20150129.hg19.gff" else (if refBase == "*hg38*" then "/bplib.hg38.gff" else "/breakseq2_bplib_20150129.hs37d5/breakseq2_bplib_20150129.gff")
+    String breakpointLibrary = if (reference == "hg19") then "--bplib_gff /breakseq2_bplib_20150129.hg19/breakseq2_bplib_20150129.hg19.gff" else (if reference == "hg38" then "--bplib_gff /bplib.hg38.gff" else (if reference == "hs37d5" then "--bplib_gff /breakseq2_bplib_20150129.hs37d5/breakseq2_bplib_20150129.gff" else ""))
 
     command <<<
         mkdir -p "breakseq2"
@@ -546,7 +578,7 @@ task Breakseq {
             --work breakseq2 \
             --bwa /miniconda/bin/bwa \
             --samtools /miniconda/bin/samtools \
-            --bplib_gff "~{breakpointLibrary}" \
+            "~{breakpointLibrary}" \
             --nthreads "$(nproc)" \
             --sample "~{bamBase}"
 
