@@ -578,7 +578,7 @@ task Breakseq {
             --work breakseq2 \
             --bwa /miniconda/bin/bwa \
             --samtools /miniconda/bin/samtools \
-            "~{breakpointLibrary}" \
+            ~{breakpointLibrary} \
             --nthreads "$(nproc)" \
             --sample "~{bamBase}"
 
