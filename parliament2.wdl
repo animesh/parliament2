@@ -686,7 +686,7 @@ task DellyChrom {
 
     runtime {
         docker : "szarate/delly:v0.8.3"
-        cpu : 4
+        cpu : 8
     }
 
     output {
