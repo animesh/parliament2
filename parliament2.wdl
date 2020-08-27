@@ -744,6 +744,7 @@ task LumpyChrom {
 
     runtime {
         docker : "szarate/lumpy-sv:v0.3.0"
+        cpu : 4
     }
 
     output {
@@ -898,7 +899,7 @@ task Jasmine {
     >>>
 
     runtime {
-        docker : "szarate/jasmine:v1.0.2"
+        docker : "szarate/jasmine:v1.0.5"
     }
 
     output {

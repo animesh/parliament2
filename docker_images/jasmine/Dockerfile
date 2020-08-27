@@ -26,5 +26,5 @@ RUN apt-get install -y \
     zlib1g-dev
 
 # Install Jasmine
-RUN git clone https://github.com/mkirsche/Jasmine.git --branch v1.0.2
+RUN git clone https://github.com/mkirsche/Jasmine.git --branch v1.0.5
 RUN Jasmine/build.sh
