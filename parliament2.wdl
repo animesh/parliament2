@@ -899,7 +899,7 @@ task Jasmine {
     >>>
 
     runtime {
-        docker : "szarate/jasmine:v1.0.5"
+        docker : "szarate/jasmine:v1.0.6"
     }
 
     output {
