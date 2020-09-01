@@ -10,34 +10,37 @@ RUN apt-get update -q
 RUN apt-get upgrade -y -q
 
 # Install necessary tools
+RUN apt-get update --fix-missing -q
 RUN apt-get install -y \
-    curl
+    build-essential \
+    git \
+    zlib1g-dev
 
-# Install conda & samtools
-RUN curl -LO http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh && bash Miniconda-latest-Linux-x86_64.sh -p /miniconda -b && rm Miniconda-latest-Linux-x86_64.sh
-ENV PATH=/miniconda/bin:${PATH}
-RUN conda update -y conda
-
-RUN conda config --add channels bioconda
-RUN conda install -c bioconda survivor
+# Install SURVIVOR
+RUN git clone https://github.com/fritzsedlazeck/SURVIVOR.git
+WORKDIR /SURVIVOR/Debug/
+RUN git checkout 1d1d33b016dbf818b1678a27dee3d3de7f0fda0b
+RUN make
+WORKDIR /
 
 # Install vcftools
 RUN apt-get update -y -q
 RUN apt-get install -y \
     autoconf \
-    build-essential \
     g++ \
-    git \
-    pkg-config \
-    zlib1g-dev
+    pkg-config
 
 RUN git clone https://github.com/vcftools/vcftools.git
 WORKDIR vcftools
 RUN ./autogen.sh
 RUN ./configure --disable-dependency-tracking && make && make install
+WORKDIR /
+
+RUN apt-get install -y \
+    python3
 
 COPY combine_combined.py /opt/bin/
 COPY all.phred.txt /opt/bin/
 COPY correct_max_position.py /opt/bin/
 
-ENV PATH=$PATH:/miniconda/pkgs/survivor-1.0.7-he513fc3_0/bin/
+ENV PATH=$PATH:/SURVIVOR/Debug/

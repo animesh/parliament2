@@ -873,11 +873,11 @@ task SURVIVOR {
         vcf-sort -c < "~{bamBase}.vcf" > "~{bamBase}.survivor.sorted.vcf"
 
         sed -i 's/SAMPLE/breakdancer/g' "~{bamBase}.survivor.sorted.vcf"
-        python /opt/bin/combine_combined.py "~{bamBase}.survivor.sorted.vcf" "~{bamBase}" survivor_inputs /opt/bin/all.phred.txt | python /opt/bin/correct_max_position.py > "~{bamBase}.survivor.qual.vcf"
+        python3 /opt/bin/combine_combined.py "~{bamBase}.survivor.sorted.vcf" "~{bamBase}" survivor_inputs /opt/bin/all.phred.txt | python3 /opt/bin/correct_max_position.py > "~{bamBase}.survivor.qual.vcf"
     >>>
 
     runtime {
-        docker : "szarate/survivor:v1.0.7"
+        docker : "szarate/survivor:1d1d33b"
     }
 
     output {

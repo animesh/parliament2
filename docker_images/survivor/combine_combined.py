@@ -61,6 +61,8 @@ def main():
                     sys.stdout.write(line)
             # add sample to line describing VCF fields
             elif line[0] == "#" and line[1] != "#":
+                # add explanation of SUPP_VEC vector
+                print("#SUPP_VEC: {}".format(headers))
                 tab_split = line.strip().split("\t")
                 print(("\t".join(tab_split[:9]) + "\t{}".format(sample)))
             # VCF entries
