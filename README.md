@@ -1,6 +1,41 @@
-# Parliament2
+# Check SV-Pseudomonas data
 
 **NOTE: This fork of the DNAnexus version of Parliament2 (slzarate/parliament2) is currently under construction. Please continue to use the DNAnexus version (installation details below) until further notice.**
+
+* [issue](https://github.com/dnanexus/parliament2/issues/85#issuecomment-698425218)
+
+```bash
+doskey /history
+docker build . -t parliament2 #Step 22/55 : ADD resources.tar.gz ADD failed: stat /var/lib/docker/tmp/docker-builder698919152/resources.tar.gz: no such file or direct
+docker pull dnanexus/parliament2
+mkdir in
+ln -s JJOD01.fasta in/.
+ln -s Aas-gDNA1-W2-PaE_S8_L001_R.raw1.pe.sort.bam in/.
+mkdir in/None
+docker images
+docker run -v %cd%/in:/home/dnanexus/in/ dnanexus/parliament2:latest --bam Aas-gDNA1-W2-PaE_S8_L001_R.raw1.pe.sort.bam --ref_genome JJOD01.fasta
+WARNING: Did not detect any SV modules requested by the user through command-line flags.
+Running with default SV modules: Breakdancer, Breakseq, Manta, CNVnator, Lumpy, and Delly Deletion
+cp: omitting directory '/home/dnanexus/in/None'
+Set up and index BAM/CRAM
+BAM file and index both exist in the mounted volume; continuing
+Generate contigs
+Launching jobs that cannot be parallelized by contig
+BreakSeq
+Manta
+Processing bam input.bam
+Launching jobs parallelized by contig
+Converting results to VCF format
+Convert Lumpy results to VCF format
+Convert Manta results to VCF format
+No outputs of Manta found. Continuing.
+ls: cannot access *.vcf: No such file or directory
+Convert Breakseq results to VCF format
+No outputs of Breakseq found. Continuing.
+Convert Delly deletion results to VCF format
+No Breakseq log files found.
+```
+
 
 Parliament2 identifies structural variants in a given sample relative to a reference genome. These structural variants cover large deletion events that are called as Deletions of a region, Insertions of a sequence into a region, Duplications of a region, Inversions of a region, or Translocations between two regions in the genome.
 
